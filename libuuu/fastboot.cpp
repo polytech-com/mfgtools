@@ -90,12 +90,11 @@ int FastBoot::Transport(string cmd, void *p, size_t size, vector<uint8_t> *input
 			}
 		}else
 		{
-			string s;
-			s = buff + 4;
+			string s = actual >= 4 ?  std::string(buff + 4, actual - 4) : std::string();
 			m_info += s;
 			uuu_notify nt;
 			nt.type = uuu_notify::NOTIFY_CMD_INFO;
-			nt.str = buff + 4;
+			nt.str = (char*)s.c_str();
 			call_notify(nt);
 		}
 	}
@@ -193,7 +192,14 @@ int FBCmd::run(CmdCtx *ctx)
 	if (fb.Transport(cmd, nullptr, 0))
 		return -1;
 
+        m_response = fb.m_info;
+
 	return 0;
+}
+
+std::string FBCmd::getResponse() const
+{
+    return m_response;
 }
 
 int FBPartNumber::run(CmdCtx *ctx)

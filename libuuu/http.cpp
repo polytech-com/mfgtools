@@ -315,27 +315,7 @@ int HttpStream::HttpGetHeader(std::string host, std::string path, int port, bool
 
 size_t HttpStream::HttpGetFileSize()
 {
-	DWORD dwSize = 0;
-	BOOL  bResults = FALSE;
-	wstring out;
-
-	WinHttpQueryHeaders(m_hRequest, WINHTTP_QUERY_CONTENT_LENGTH,
-		WINHTTP_HEADER_NAME_BY_INDEX, nullptr,
-		&dwSize, WINHTTP_NO_HEADER_INDEX);
-
-	// Allocate memory for the buffer.
-	if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-	{
-		out.resize(dwSize / sizeof(WCHAR));
-
-		// Now, use WinHttpQueryHeaders to retrieve the header.
-		bResults = WinHttpQueryHeaders(m_hRequest,
-			WINHTTP_QUERY_CONTENT_LENGTH,
-			WINHTTP_HEADER_NAME_BY_INDEX,
-			(LPVOID)out.c_str(), &dwSize,
-			WINHTTP_NO_HEADER_INDEX);
-	}
-	return _wtoll(out.c_str());
+   return 0;
 }
 
 int HttpStream::HttpDownload(char *buff, size_t sz)
@@ -502,9 +482,10 @@ int HttpStream::HttpGetHeader(std::string host, std::string path, int port, bool
 		string request = "GET " + httppath + " HTTP/1.1\r\n";
 		request += "Host: " + host + "\r\n";
 
+#ifdef UUUSSL
 		if (!up.first.empty())
 			request += "Authorization: Basic " + base64_encode(userpd) + "\r\n";
-
+#endif
 		request += "User-Agent:uuu\r\nAccept: */*\r\n";
 		request += "\r\n";
 

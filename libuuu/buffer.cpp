@@ -1283,7 +1283,15 @@ FileBuffer::~FileBuffer()
 
 int FileBuffer::mapfile(const string &filename, size_t sz)
 {
-#ifdef _MSC_VER
+#ifdef _WIN32
+
+#ifndef REQUEST_OPLOCK_CURRENT_VERSION
+#define REQUEST_OPLOCK_CURRENT_VERSION 1
+#define OPLOCK_LEVEL_CACHE_READ         (0x00000001)
+#define OPLOCK_LEVEL_CACHE_HANDLE       (0x00000002)
+#define OPLOCK_LEVEL_CACHE_WRITE        (0x00000004)
+#define REQUEST_OPLOCK_INPUT_FLAG_REQUEST               (0x00000001)
+#endif
 
 		m_Request.StructureVersion = REQUEST_OPLOCK_CURRENT_VERSION;
 		m_Request.StructureLength = sizeof(REQUEST_OPLOCK_INPUT_BUFFER);
@@ -1780,7 +1788,7 @@ int FileBuffer::unmapfile()
 {
 	if (m_pDatabuffer)
 	{
-#ifdef _MSC_VER
+#ifdef _WIN32
 		UnmapViewOfFile(m_pDatabuffer);
 		m_pDatabuffer = nullptr;
 		CloseHandle(m_file_map);

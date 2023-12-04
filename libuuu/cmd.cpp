@@ -205,7 +205,7 @@ int CmdBase::parser(char *p)
 int CmdBase::parser_protocal(char *p, size_t &pos)
 {
 	if (p)
-		m_cmd = *p;
+		m_cmd = p;
 
 	string prot = get_next_param(m_cmd, pos, ':');
 	string param;
@@ -766,24 +766,10 @@ int CmdEnv::parser(char *p)
 		for (auto &i : result) {
 			string key { i.first + 1, i.second - 1 };
 			auto value = [&key]() -> pair<bool, string> {
-#ifndef WIN32
-				auto ptr = getenv(key.c_str());
+				auto ptr = std::getenv(key.c_str());
 				if (ptr)
 					return {true, ptr};
 				return {false, {}};
-#else
-				size_t len;
-				getenv_s(&len, nullptr, 0, key.c_str());
-				if (!len){
-					/* To have the same behavior as Linux when uuu is provided with variables in the way : -e var=
-					 * We return null char as windows cannot store empty environment variables
-					 */
-					return {true, "\0"};
-				}
-				string value(len-1, '\0');
-				getenv_s(&len, &value[0], len, key.c_str());
-				return {true, value};
-#endif
 			}();
 			if (!value.first) {
 				set_last_err_string("variable '" + key + "' is not defined");
@@ -1182,4 +1168,3 @@ int uuu_wait_uuu_finish(int deamon, int dry)
 	clean_up_filemap();
 	return 0;
 }
-

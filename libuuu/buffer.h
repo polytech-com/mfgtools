@@ -42,8 +42,9 @@
 #include <queue>
 #include "liberror.h"
 #include <cstring>
-#ifdef _MSC_VER
-#include <Windows.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <winioctl.h>
 #else
 #include <sys/mman.h>
 #include <fcntl.h>

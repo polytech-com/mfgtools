@@ -82,9 +82,11 @@ public:
 
 	int parser(char *p = nullptr) override;
 	int run(CmdCtx *ctx) override;
+        [[nodiscard]] std::string getResponse() const;
 
 protected:
 	std::string m_uboot_cmd;
+	std::string m_response;
 
 private:
 	const std::string m_fb_cmd;
