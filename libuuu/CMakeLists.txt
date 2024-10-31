@@ -11,7 +11,7 @@ pkg_check_modules(LIBZSTD REQUIRED libzstd)
 find_package(Threads)
 pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
 
-include_directories(${LIBUSB_INCLUDE_DIRS} ${LIBZSTD_INCLUDE_DIRS} ${UUUOPENSLL_INCLUDE_DIR} include)
+include_directories(${LIBUSB_INCLUDE_DIRS} ${LIBZSTD_INCLUDE_DIRS} ${UUUOPENSLL_INCLUDE_DIR} ${TINYXML2_INCLUDE_DIR} include)
 
 if (NOT MSVC)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall -Wstrict-aliasing -Wextra ${UUUSSL}")
