@@ -36,6 +36,7 @@
 #include "buffer.h"
 #include "sdp.h"
 #include "trans.h"
+#include <libusb.h>
 
 #include <cstring>
 
@@ -80,6 +81,18 @@ struct _ST_HID_CBW
 
 #include "rominfo.h"
 
+static bool is_ivt_barker_header(shared_ptr<DataBuffer> data, size_t off)
+{
+	if (off + sizeof(IvtHeader) > data->size())
+		return false;
+
+	IvtHeader *p = (IvtHeader*)(data->data() + off);
+	if (p->IvtBarker == IVT_BARKER_HEADER || p->IvtBarker == IVT_BARKER2_HEADER)
+		return true;
+
+	return false;
+}
+
 int SDPSCmd::run(CmdCtx *pro)
 {
 	const ROM_INFO * rom = search_rom_info(pro->m_config_item);
@@ -91,7 +104,7 @@ int SDPSCmd::run(CmdCtx *pro)
 		return -1;
 	}
 
-	HIDTrans dev;
+	HIDTrans dev(m_timeout);
 	if (rom->flags & ROM_INFO_HID_EP1)
 		dev.set_hid_out_ep(1);
 
@@ -127,7 +140,7 @@ int SDPSCmd::run(CmdCtx *pro)
 			}
 
 			offset = pos - length;
-			if (offset < 0)
+			if (ssize_t(offset) < 0)
 			{
 				set_last_err_string("This wic boot length is wrong");
 				return -1;
@@ -137,12 +150,17 @@ int SDPSCmd::run(CmdCtx *pro)
 	}
 	else
 	{
-		p = p1->request_data(0, UINT64_MAX); //request all data
+		p = p1->request_data(0, SIZE_MAX); //request all data
 		if (!p) return -1;
 	}
 
 	if (m_bskipflashheader)
 		offset += GetFlashHeaderSize(p, offset);
+
+	// Detect barebox binaries that have the IVT header at offset 32K
+	if (!is_ivt_barker_header(p, offset) &&
+	     is_ivt_barker_header(p, offset + 0x8000))
+		offset += 0x8000;
 
 	if (offset >= p->size())
 	{

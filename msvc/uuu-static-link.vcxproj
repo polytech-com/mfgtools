@@ -116,7 +116,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\libusb\$(LibusbRootDir)build\$(PlatformToolset)\$(Platform)\$(Configuration)\lib\libusb-1.0.lib;$(Platform)/$(Configuration)/libuuu.lib;$(Platform)/$(Configuration)/zlib.lib;%(AdditionalDependencies);$(Platform)/$(Configuration)/bzip2.lib;$(SolutionDir)bin\$(Platform)_$(Configuration)\libzstd_static.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\libusb\$(LibusbRootDir)build\$(PlatformToolset)\$(Platform)\$(Configuration)\lib\libusb-1.0.lib;$(Platform)/$(Configuration)/libuuu.lib;$(Platform)/$(Configuration)/zlib.lib;%(AdditionalDependencies);$(Platform)/$(Configuration)/bzip2.lib;$(SolutionDir)bin\$(Platform)_$(Configuration)\libzstd_static.lib;$(Platform)/$(Configuration)/tinyxml2.lib</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>echo R^"####( &gt; $(SolutionDir)\..\uuu\uuu.clst
@@ -128,6 +128,9 @@ echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\emmc_burn_loader.clst
 echo R^"####( &gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
 type $(SolutionDir)\..\uuu\qspi_burn_loader.lst &gt;&gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
 echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
+echo R^"####( &gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
+type $(SolutionDir)\..\uuu\fspinand_burn_loader.lst &gt;&gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
+echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
 echo R^"####( &gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
 type $(SolutionDir)\..\uuu\nvme_burn_all.lst &gt;&gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
 echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
@@ -167,7 +170,7 @@ echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\nand_burn_loader.clst
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\libusb\$(LibusbRootDir)build\$(PlatformToolset)\$(Platform)\$(Configuration)\lib\libusb-1.0.lib;$(Platform)/$(Configuration)/libuuu.lib;$(Platform)/$(Configuration)/zlib.lib;%(AdditionalDependencies);$(Platform)/$(Configuration)/bzip2.lib;$(SolutionDir)bin\$(Platform)_$(Configuration)\libzstd_static.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\libusb\$(LibusbRootDir)build\$(PlatformToolset)\$(Platform)\$(Configuration)\lib\libusb-1.0.lib;$(Platform)/$(Configuration)/libuuu.lib;$(Platform)/$(Configuration)/zlib.lib;%(AdditionalDependencies);$(Platform)/$(Configuration)/bzip2.lib;$(SolutionDir)bin\$(Platform)_$(Configuration)\libzstd_static.lib;$(Platform)/$(Configuration)/tinyxml2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
     </Link>
@@ -181,6 +184,9 @@ echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\emmc_burn_loader.clst
 echo R^"####( &gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
 type $(SolutionDir)\..\uuu\qspi_burn_loader.lst &gt;&gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
 echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
+echo R^"####( &gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
+type $(SolutionDir)\..\uuu\fspinand_burn_loader.lst &gt;&gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
+echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
 echo R^"####( &gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
 type $(SolutionDir)\..\uuu\nvme_burn_all.lst &gt;&gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
 echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
@@ -225,7 +231,7 @@ echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\nand_burn_loader.clst
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\libusb\$(LibusbRootDir)build\$(PlatformToolset)\$(Platform)\$(Configuration)\lib\libusb-1.0.lib;$(Platform)/$(Configuration)/libuuu.lib;$(Platform)/$(Configuration)/zlib.lib;%(AdditionalDependencies);$(Platform)/$(Configuration)/bzip2.lib;$(SolutionDir)bin\$(Platform)_$(Configuration)\libzstd_static.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\libusb\$(LibusbRootDir)build\$(PlatformToolset)\$(Platform)\$(Configuration)\lib\libusb-1.0.lib;$(Platform)/$(Configuration)/libuuu.lib;$(Platform)/$(Configuration)/zlib.lib;%(AdditionalDependencies);$(Platform)/$(Configuration)/bzip2.lib;$(SolutionDir)bin\$(Platform)_$(Configuration)\libzstd_static.lib;$(Platform)/$(Configuration)/tinyxml2.lib</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>echo R^"####( &gt; $(SolutionDir)\..\uuu\uuu.clst
@@ -237,6 +243,9 @@ echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\emmc_burn_loader.clst
 echo R^"####( &gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
 type $(SolutionDir)\..\uuu\qspi_burn_loader.lst &gt;&gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
 echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
+echo R^"####( &gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
+type $(SolutionDir)\..\uuu\fspinand_burn_loader.lst &gt;&gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
+echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
 echo R^"####( &gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
 type $(SolutionDir)\..\uuu\nvme_burn_all.lst &gt;&gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
 echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
@@ -281,7 +290,7 @@ echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\nand_burn_loader.clst
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\libusb\$(LibusbRootDir)build\$(PlatformToolset)\$(Platform)\$(Configuration)\lib\libusb-1.0.lib;$(Platform)/$(Configuration)/libuuu.lib;$(Platform)/$(Configuration)/zlib.lib;%(AdditionalDependencies);$(Platform)/$(Configuration)/bzip2.lib;$(SolutionDir)bin\$(Platform)_$(Configuration)\libzstd_static.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\libusb\$(LibusbRootDir)build\$(PlatformToolset)\$(Platform)\$(Configuration)\lib\libusb-1.0.lib;$(Platform)/$(Configuration)/libuuu.lib;$(Platform)/$(Configuration)/zlib.lib;%(AdditionalDependencies);$(Platform)/$(Configuration)/bzip2.lib;$(SolutionDir)bin\$(Platform)_$(Configuration)\libzstd_static.lib;$(Platform)/$(Configuration)/tinyxml2.lib</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>echo R^"####( &gt; $(SolutionDir)\..\uuu\uuu.clst
@@ -293,6 +302,9 @@ echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\emmc_burn_loader.clst
 echo R^"####( &gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
 type $(SolutionDir)\..\uuu\qspi_burn_loader.lst &gt;&gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
 echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\qspi_burn_loader.clst
+echo R^"####( &gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
+type $(SolutionDir)\..\uuu\fspinand_burn_loader.lst &gt;&gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
+echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\fspinand_burn_loader.clst
 echo R^"####( &gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
 type $(SolutionDir)\..\uuu\nvme_burn_all.lst &gt;&gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst
 echo )####^" &gt;&gt; $(SolutionDir)\..\uuu\nvme_burn_all.clst

@@ -69,7 +69,7 @@ int file_overwrite_monitor(std::string filename, FileBuffer *p);
 #define FILEBUFFER_FLAG_PARTIAL_RELOADABLE 0x10
 #define FILEBUFFER_FLAG_SEG_DONE		0x20
 
-#define FILEBUFFER_FLAG_LOADED		(FILEBUFFER_FLAG_LOADED_BIT|FILEBUFFER_FLAG_KNOWN_SIZE_BIT) // LOADED must be knownsize
+#define FILEBUFFER_FLAG_LOADED		(FILEBUFFER_FLAG_LOADED_BIT|FILEBUFFER_FLAG_KNOWN_SIZE_BIT) // LOADED must be known size
 #define FILEBUFFER_FLAG_KNOWN_SIZE	FILEBUFFER_FLAG_KNOWN_SIZE_BIT
 
 class FileBuffer;
@@ -103,6 +103,8 @@ public:
 			return m_pData;
 		return m_data.data();
 	}
+
+	virtual ~FragmentBlock() {}
 };
 
 
@@ -149,7 +151,7 @@ public:
 	{
 		return (*this)[index];
 	}
-	~DataBuffer()
+	virtual ~DataBuffer()
 	{
 		if (m_allocate_way == ALLOCATION_WAYS::MALLOC)
 		{
@@ -203,7 +205,7 @@ public:
 	std::mutex m_pool_load_cv_mutex;
 	std::shared_ptr<FragmentBlock> m_last_db;
 	size_t m_seg_blk_size = 0x800000;
-	size_t m_totall_buffer_size = 8 * m_seg_blk_size;
+	size_t m_total_buffer_size = 8 * m_seg_blk_size;
 	std::atomic_bool m_reset_stream { false };
 
 	//used for continue decompress\loading only
@@ -241,11 +243,11 @@ public:
 
 	std::atomic_int m_dataflags;
 
-	std::thread m_aync_thread;
+	std::thread m_async_thread;
 
-	std::atomic_size_t m_avaible_size;
+	std::atomic_size_t m_available_size;
 	std::condition_variable m_request_cv;
-	std::mutex m_requext_cv_mutex;
+	std::mutex m_request_cv_mutex;
 
 #ifdef WIN32
 	OVERLAPPED m_OverLapped;
@@ -294,7 +296,7 @@ public:
 		if (IsKnownSize())
 			return m_DataSize;
 
-		std::unique_lock<std::mutex> lck(m_requext_cv_mutex);
+		std::unique_lock<std::mutex> lck(m_request_cv_mutex);
 		while (!(m_dataflags & FILEBUFFER_FLAG_KNOWN_SIZE_BIT))
 			m_request_cv.wait(lck);
 
@@ -338,7 +340,7 @@ private:
 	ALLOCATION_WAYS m_allocate_way = ALLOCATION_WAYS::MALLOC;
 };
 
-std::shared_ptr<FileBuffer> get_file_buffer(std::string filename, bool aysnc=false);
+std::shared_ptr<FileBuffer> get_file_buffer(std::string filename, bool async=false);
 bool check_file_exist(std::string filename, bool start_async_load=true);
 
 void set_current_dir(const std::string &dir);

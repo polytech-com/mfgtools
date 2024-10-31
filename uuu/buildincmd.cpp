@@ -193,7 +193,7 @@ BuiltInScriptMap::BuiltInScriptMap(const BuiltInScriptRawData*p)
 
 /**
  * @brief Auto-complete names of built-in scripts if they match `match`
- * @param[in] match The string against which the scripts' names will be machted
+ * @param[in] match The string against which the scripts' names will be matched
  * @param[in] space A separator character which shall be printed after the
  * completed script name
  */
@@ -245,7 +245,7 @@ void BuiltInScriptMap::ShowCmds(FILE * const file) const
  * @param[in] str The string of which a copy with the replacements shall be
  * created
  * @param[in] key The string which shall be replaced
- * @param[in] replace The string that shall replace ocurrences of `key`
+ * @param[in] replace The string that shall replace occurrences of `key`
  * @return A new string instance with the replacements conducted on it
  */
 static std::string replace_str(std::string str, std::string key, std::string replace)
@@ -336,6 +336,11 @@ static constexpr BuiltInScriptRawData g_builtin_cmd[] =
 		"qspi",
 #include "qspi_burn_loader.clst"
 		,"burn boot loader to qspi nor flash"
+	},
+	{
+		"spi_nand",
+#include "fspinand_burn_loader.clst"
+		,"burn boot loader to spi nand flash"
 	},
 	{
 		"sd",

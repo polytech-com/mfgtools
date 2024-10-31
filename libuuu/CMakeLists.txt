@@ -9,6 +9,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBUSB REQUIRED libusb-1.0>=1.0.16)
 pkg_check_modules(LIBZSTD REQUIRED libzstd)
 find_package(Threads)
+pkg_check_modules(TINYXML2 REQUIRED tinyxml2)
 
 include_directories(${LIBUSB_INCLUDE_DIRS} ${LIBZSTD_INCLUDE_DIRS} ${UUUOPENSLL_INCLUDE_DIR} include)
 
@@ -37,6 +38,7 @@ set(SOURCES
 	http.cpp
 	hidreport.cpp
 	sparse.cpp
+	bmap.cpp
 )
 
 set(generated_files_dir "${CMAKE_BINARY_DIR}/libuuu/gen")

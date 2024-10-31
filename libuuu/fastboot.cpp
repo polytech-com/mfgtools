@@ -74,11 +74,18 @@ int FastBoot::Transport(string cmd, void *p, size_t size, vector<uint8_t> *input
 
 			if (input)
 			{
+				size_t rz, rsize = 0;
+
 				input->resize(sz);
-				size_t rz;
-				if (m_pTrans->read(input->data(), sz, &rz))
-					return -1;
-				input->resize(rz);
+				while (rsize < sz)
+				{
+					if (m_pTrans->read(input->data() + rsize, sz - rsize, &rz))
+					{
+						set_last_err_string("Error on DATA read!");
+						return -1;
+					}
+					rsize += rz;
+				}
 			}
 			else
 			{
@@ -158,8 +165,8 @@ int FBCmd::parser(char *p)
 
 	size_t pos = 0;
 	string s;
-	
-	if (parser_protocal(p, pos))
+
+	if (parser_protocol(p, pos))
 		return -1;
 	
 	s = get_next_param(m_cmd, pos);
@@ -248,7 +255,7 @@ int FBDownload::run(CmdCtx *ctx)
 	if (buff == nullptr)
 		return -1;
 
-	shared_ptr<DataBuffer> pdata = buff->request_data(0, UINT64_MAX);
+	shared_ptr<DataBuffer> pdata = buff->request_data(0, SIZE_MAX);
 	if (!pdata)
 		return -1;
 	string_ex cmd;
@@ -269,7 +276,10 @@ int FBUpload::run(CmdCtx* ctx)
 	FastBoot fb(&dev);
 	
 	string_ex cmd;
-	cmd.format("upload");
+	if (m_var.length())
+		cmd.format("upload:%s", m_var.c_str());
+	else
+		cmd.format("upload");
 
 	std::vector<uint8_t> buff;
 	if (fb.Transport(cmd, nullptr, buff.size(), &buff))
@@ -363,7 +373,7 @@ int FBCopy::run(CmdCtx *ctx)
 		{
 			return -1;
 		}
-		shared_ptr<DataBuffer> buff = pin->request_data(0, UINT64_MAX);
+		shared_ptr<DataBuffer> buff = pin->request_data(0, SIZE_MAX);
 		if (!buff)
 			return -1;
 		cmd.format("WOpen:%s", m_target_file.c_str());
@@ -500,7 +510,26 @@ int FBFlashCmd::parser(char *p)
 	if (m_partition == "-raw2sparse")
 	{
 		m_raw2sparse = true;
+
+		if (uuu_force_bmap())
+			m_use_bmap = true;
+
 		m_partition = get_next_param(subcmd, pos);
+
+		if (m_partition == "-no-bmap")
+		{
+			m_use_bmap = false;
+			m_partition = get_next_param(subcmd, pos);
+		}
+		else if (m_partition == "-bmap")
+		{
+			m_use_bmap = true;
+			m_bmap_filename = get_next_param(subcmd, pos);
+			m_partition = get_next_param(subcmd, pos);
+		}
+
+		if (uuu_ignore_bmap())
+			m_use_bmap = false;
 	}
 
 	if (m_partition == "-scanterm")
@@ -546,8 +575,32 @@ int FBFlashCmd::parser(char *p)
 		return -1;
 	}
 
-	if (!check_file_exist(m_filename))
+	if (!check_file_exist(m_filename)) {
+		set_last_err_string("FB: image file not found");
 		return -1;
+	}
+
+	if (m_use_bmap && m_bmap_filename.size() && !check_file_exist(m_bmap_filename)) {
+		set_last_err_string("FB: bmap file not found");
+		return -1;
+	}
+
+	if (m_use_bmap && m_bmap_filename.empty()) {
+		m_bmap_filename = m_filename;
+		auto p = m_bmap_filename.rfind('.');
+		if (p != string::npos) {
+			m_bmap_filename.replace(p, string::npos, ".bmap");
+			if (check_file_exist(m_bmap_filename))
+				return 0;
+		}
+
+		m_bmap_filename = m_filename;
+		m_bmap_filename.append(".bmap");
+		if (check_file_exist(m_bmap_filename))
+			return 0;
+
+		m_use_bmap = false;
+	}
 
 	return 0;
 }
@@ -567,7 +620,7 @@ int FBFlashCmd::flash(FastBoot *fb, void * pdata, size_t sz)
 	return 0;
 }
 
-int FBFlashCmd::flash_raw2sparse(FastBoot *fb, shared_ptr<FileBuffer> pdata, size_t block_size, size_t max)
+int FBFlashCmd::flash_raw2sparse(FastBoot *fb, shared_ptr<FileBuffer> pdata, size_t max)
 {
 	SparseFile sf;
 
@@ -576,7 +629,9 @@ int FBFlashCmd::flash_raw2sparse(FastBoot *fb, shared_ptr<FileBuffer> pdata, siz
 	if (max > m_sparse_limit)
 		 max = m_sparse_limit;
 
-	sf.init_header(block_size, (max + block_size -1) / block_size);
+	size_t block_size = m_bmap.block_size();
+
+	sf.init_header(m_bmap.block_size(), (max + block_size - 1) / block_size);
 
 	data.resize(block_size);
 
@@ -591,12 +646,11 @@ int FBFlashCmd::flash_raw2sparse(FastBoot *fb, shared_ptr<FileBuffer> pdata, siz
 
 	call_notify(nt);
 	
-
 	size_t i = 0;
 	int r;
 	while (!(r=pdata->request_data(data, i*block_size, block_size)))
 	{
-		int ret = sf.push_one_block(data.data());
+		int ret = sf.push_one_block(data.data(), !m_bmap.is_mapped_block(i));
 		if (ret)
 		{
 			if (flash(fb, sf.m_data.data(), sf.m_data.size()))
@@ -664,16 +718,23 @@ int FBFlashCmd::run(CmdCtx *ctx)
 
 	if (m_raw2sparse)
 	{
-		size_t block_size = 4096;
+		// fully mapped image
+		if (!m_use_bmap) {
+			size_t block_size = 4096;
+			if (getvar.parser((char*)"FB: getvar logical-block-size"))
+				return -1;
+			if (!getvar.run(ctx))
+				block_size = str_to_uint32(getvar.m_val);
 
-		if (getvar.parser((char*)"FB: getvar logical-block-size"))
-			return -1;
-		if (!getvar.run(ctx))
-			block_size = str_to_uint32(getvar.m_val);
+			if (block_size == 0) {
+				set_last_err_string("Device report block_size is 0");
+				return -1;
+			}
 
-		if (block_size == 0)
-		{
-			set_last_err_string("Device report block_size is 0");
+			m_bmap = bmap_t{SIZE_MAX, block_size};
+		// load mappings from the file
+		} else if (!load_bmap(m_bmap_filename, m_bmap)) {
+			set_last_err_string("Failed to load BMAP");
 			return -1;
 		}
 
@@ -699,7 +760,7 @@ int FBFlashCmd::run(CmdCtx *ctx)
 			return flash_ffu(&fb, pdata);
 		}
 
-		return flash_raw2sparse(&fb, pdata, block_size, max);
+		return flash_raw2sparse(&fb, pdata, max);
 	}
 
 	shared_ptr<FileBuffer> pin = get_file_buffer(m_filename, true);
@@ -954,15 +1015,15 @@ int FBFlashCmd::flash_ffu(FastBoot *fb, shared_ptr<FileBuffer> pin)
 	nt.total = pIs->dwWriteDescriptorCount;
 	call_notify(nt);
 
-	size_t currrent_block = 0;
+	size_t current_block = 0;
 	size_t i;
 	for (i = 0; i < pIs->dwWriteDescriptorCount; i++)
 	{
 		FFU_BLOCK_DATA_ENTRY *entry = (FFU_BLOCK_DATA_ENTRY*)(p->data() + off);
-		
+
 		off += sizeof(FFU_BLOCK_DATA_ENTRY) + (entry->dwLocationCount -1) * sizeof(_DISK_LOCATION);
 
-		if (currrent_block >= pIs->dwInitialTableIndex && currrent_block < pIs->dwInitialTableIndex + pIs->dwInitialTableCount)
+		if (current_block >= pIs->dwInitialTableIndex && current_block < pIs->dwInitialTableIndex + pIs->dwInitialTableCount)
 		{
 			//Skip Init Block
 		}
@@ -970,7 +1031,7 @@ int FBFlashCmd::flash_ffu(FastBoot *fb, shared_ptr<FileBuffer> pin)
 		{
 			for (uint32_t loc = 0; loc < entry->dwLocationCount; loc++)
 			{
-				//printf("block 0x%x write to 0x%x seek %d\n", currrent_block, entry->rgDiskLocations[loc].dwBlockIndex, entry->rgDiskLocations[loc].dwDiskAccessMethod);
+				//printf("block 0x%x write to 0x%x seek %d\n", current_block, entry->rgDiskLocations[loc].dwBlockIndex, entry->rgDiskLocations[loc].dwDiskAccessMethod);
 				uint32_t blockindex;
 				if (entry->rgDiskLocations[loc].dwDiskAccessMethod == DISK_BEGIN)
 					blockindex = entry->rgDiskLocations[loc].dwBlockIndex;
@@ -981,7 +1042,7 @@ int FBFlashCmd::flash_ffu(FastBoot *fb, shared_ptr<FileBuffer> pin)
 				{
 					if (flash_ffu_oneblk(fb,
 							pin,
-							block_off + (currrent_block + blk) * pIs->dwBlockSizeInBytes,
+							block_off + (current_block + blk) * pIs->dwBlockSizeInBytes,
 							pIs->dwBlockSizeInBytes,
 							blockindex + blk))
 						return -1;
@@ -993,7 +1054,7 @@ int FBFlashCmd::flash_ffu(FastBoot *fb, shared_ptr<FileBuffer> pin)
 		nt.total = i;
 		call_notify(nt);
 
-		currrent_block += entry->dwBlockCount;
+		current_block += entry->dwBlockCount;
 	}
 
 	nt.type = uuu_notify::NOTIFY_TRANS_POS;
@@ -1020,14 +1081,18 @@ string FBLoop::build_cmd(string& cmd, size_t off, size_t sz)
 	ucmd += cmd;
 
 	string_ex ex;
-	ex.format("0x%llx", off);
 
 	size_t pos= ucmd.find("@off");
-	ucmd = ucmd.replace(pos, 4, ex);
+	if (pos != string::npos) {
+		ex.format("0x%llx", off);
+		ucmd = ucmd.replace(pos, 4, ex);
+	}
 
-	ex.format("0x%llx", sz);
 	pos = ucmd.find("@size");
-	ucmd = ucmd.replace(pos, 5, ex);
+	if (pos != string::npos) {
+		ex.format("0x%llx", sz);
+		ucmd = ucmd.replace(pos, 5, ex);
+	}
 
 	return ucmd;
 }
@@ -1041,6 +1106,7 @@ int FBLoop::run(CmdCtx* ctx)
 	int ret = 0;
 	string_ex err;
 	size_t offset = 0;
+	size_t seek = 0;
 	FastBoot fb(&dev);
 	string_ex cmd;
 	shared_ptr<FileBuffer> p1 = get_file_buffer(m_filename, true);
@@ -1059,11 +1125,13 @@ int FBLoop::run(CmdCtx* ctx)
 	call_notify(nt);
 
 	offset = m_skip;
+	seek = m_seek;
 
 	while((fbuff = p1->request_data(offset, m_each)))
 	{
-		ret = this->each(fb, fbuff, offset);
+		ret = this->each(fb, fbuff, seek);
 		offset += fbuff->size();
+		seek += fbuff->size();
 
 		if (!m_nostop && ret)
 			return ret;
@@ -1104,7 +1172,7 @@ int FBCRC::each(FastBoot& fb, std::shared_ptr<DataBuffer> fbuff, size_t off)
 {
 	uint32_t crc = crc32(0, fbuff->data(), fbuff->size());
 
-	string cmd = build_cmd(m_uboot_cmd, (off + m_seek) / m_blksize, fbuff->size() / m_blksize);
+	string cmd = build_cmd(m_uboot_cmd, off / m_blksize, div_round_up(fbuff->size(), m_blksize));
 
 	if (fb.Transport(cmd, nullptr, 0))
 		return -1;
@@ -1130,7 +1198,7 @@ int FBWrite::each(FastBoot& fb, std::shared_ptr<DataBuffer> fbuff, size_t off)
 	if (fb.Transport(cmd, fbuff->data(), fbuff->size()))
 		return -1;
 
-	string cmd_w = build_cmd(m_uboot_cmd, off/m_blksize, fbuff->size()/m_blksize);
+	string cmd_w = build_cmd(m_uboot_cmd, off / m_blksize, div_round_up(fbuff->size(), m_blksize));
 	if (fb.Transport(cmd_w, nullptr, 0))
 		return -1;
 

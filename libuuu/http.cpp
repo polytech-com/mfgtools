@@ -73,7 +73,7 @@ static const char* base64_table =
 static string base64_encode(string str)
 {
 	string ret;
-	for (int i = 0; i < str.length(); i += 3)
+	for (size_t i = 0; i < str.length(); i += 3)
 	{
 		ret.push_back(base64_table[(str[i] >> 2) & 0x3f]);
 		if (i + 1 < str.length())
@@ -296,7 +296,7 @@ int HttpStream::HttpGetHeader(std::string host, std::string path, int port, bool
 				break;
 
 			case HTTP_STATUS_PROXY_AUTH_REQ:
-				set_last_err_string("unsupport proxy auth");
+				set_last_err_string("unsupported proxy auth");
 				return -1;
 
 			default:
@@ -490,7 +490,7 @@ int HttpStream::HttpGetHeader(std::string host, std::string path, int port, bool
 		request += "\r\n";
 
 		ret = SendPacket((char*)request.c_str(), request.size());
-		if (ret != request.size())
+		if ((size_t)(ret) != request.size())
 		{
 			set_last_err_string("http send error");
 			return -1;
@@ -518,7 +518,7 @@ int HttpStream::HttpGetHeader(std::string host, std::string path, int port, bool
 
 		if (i >= 1024 - 4)
 		{
-			set_last_err_string("Can't find termaniate");
+			set_last_err_string("Can't find terminate");
 			return -1;
 		}
 
@@ -529,7 +529,7 @@ int HttpStream::HttpGetHeader(std::string host, std::string path, int port, bool
 		memcpy((void*)str.c_str(), m_buff.data(), i + 2);
 
 		int ret = parser_response(str);
-		if (ret == ERR_ACESS_DENIED)
+		if (ret == ERR_ACCESS_DENIED)
 		{
 			if(g_passwd_map[host].first.empty())
 			{
@@ -570,7 +570,7 @@ int HttpStream::parser_response(string rep)
 
 	string str = rep.substr(0, pos);
 	if (str == "HTTP/1.1 401 Unauthorized")
-		return ERR_ACESS_DENIED;
+		return ERR_ACCESS_DENIED;
 
 	if (str != "HTTP/1.1 200 OK")
 	{
@@ -600,25 +600,25 @@ int HttpStream::HttpDownload(char *buff, size_t sz)
 	size_t left = 0;
 	if (m_data_start < m_buff.size())
 		left = m_buff.size() - m_data_start;
-	
-	size_t trim_transfered = 0;
+
+	size_t trim_transferred = 0;
 
 	if (left)
 	{
-		
-		trim_transfered = sz;
-		if (trim_transfered > left)
-			trim_transfered = left;
 
-		memcpy(buff, m_buff.data() + m_data_start, trim_transfered);
-		m_data_start += trim_transfered;
+		trim_transferred = sz;
+		if (trim_transferred > left)
+			trim_transferred = left;
+
+		memcpy(buff, m_buff.data() + m_data_start, trim_transferred);
+		m_data_start += trim_transferred;
 	}
 
-	if (trim_transfered < sz)
+	if (trim_transferred < sz)
 	{
 		int ret = 0;
-		sz -= trim_transfered;
-		buff += trim_transfered;
+		sz -= trim_transferred;
+		buff += trim_transferred;
 		while (sz && ((ret = RecvPacket(buff, sz)) > 0))
 		{
 			buff += ret;

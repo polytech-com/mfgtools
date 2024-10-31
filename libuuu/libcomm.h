@@ -28,11 +28,14 @@
 * POSSIBILITY OF SUCH DAMAGE.
 *
 */
+#include <cstdint>
 #include <string>
 #include <stdarg.h>
 #include <locale>
 #include <cctype>
 #include <algorithm>
+#include "libuuu.h"
+
 #pragma once
 
 using namespace std;
@@ -43,6 +46,7 @@ void call_notify(struct uuu_notify nf);
 #define dbg printf
 
 int get_libusb_debug_level() noexcept;
+int get_libuuu_debug_level() noexcept;
 
 class string_ex : public std::string
 {
@@ -142,9 +146,9 @@ inline bool compare_str(const string &str1, const string &str2, bool ignore_case
 		return str1 == str2;
 }
 
-uint16_t str_to_uint16(const string &str, bool * conversion_suceeded = nullptr);
-uint32_t str_to_uint32(const string &str, bool * conversion_suceeded = nullptr);
-uint64_t str_to_uint64(const string &str, bool * conversion_suceeded = nullptr);
+uint16_t str_to_uint16(const string &str, bool * conversion_succeeded = nullptr);
+uint32_t str_to_uint32(const string &str, bool * conversion_succeeded = nullptr);
+uint64_t str_to_uint64(const string &str, bool * conversion_succeeded = nullptr);
 
 template <class T>
 inline T round_up(T x, T align)
@@ -152,8 +156,22 @@ inline T round_up(T x, T align)
 	return (x + align - 1) / align * align;
 }
 
+template <class T>
+inline T div_round_up(T x, T align)
+{
+	return (x + align - 1) / align;
+}
+
 inline std::string trim(const std::string &s)
 {
 	auto  wsfront = std::find_if_not(s.begin(), s.end(), [](int c) {return std::isspace(c); });
 	return std::string(wsfront, std::find_if_not(s.rbegin(), std::string::const_reverse_iterator(wsfront), [](int c) {return std::isspace(c); }).base());
+}
+
+static inline bool uuu_force_bmap() {
+	return uuu_get_bmap_mode() == bmap_mode::Force;
+}
+
+static inline bool uuu_ignore_bmap() {
+	return uuu_get_bmap_mode() == bmap_mode::Ignore;
 }

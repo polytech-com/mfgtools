@@ -239,8 +239,8 @@ public:
 		if (p->mapfile(backfile.substr(1), st.st_size))
 			return -1;
 
-		p->m_avaible_size = st.st_size;
-		
+		p->m_available_size = st.st_size;
+
 		atomic_fetch_or(&p->m_dataflags, FILEBUFFER_FLAG_LOADED | FILEBUFFER_FLAG_NEVER_FREE);
 		p->m_request_cv.notify_all();
 
@@ -393,7 +393,7 @@ int FSHttp::http_load(shared_ptr<HttpStream> http, shared_ptr<FileBuffer> p, str
 			p->m_request_cv.notify_all();
 			return -1;
 		}
-		p->m_avaible_size = i + sz;
+		p->m_available_size = i + sz;
 		p->m_request_cv.notify_all();
 
 		ut.type = uuu_notify::NOTIFY_TRANS_POS;
@@ -463,7 +463,7 @@ class FSCompressStream : public FSBackFile
 {
 public:
 	FSCompressStream() { m_small_pool = g_small_memory; }
-	int load(const string& backfile, const string& filename, shared_ptr<FileBuffer>outp);
+	int load(const string& backfile, const string& filename, shared_ptr<FileBuffer>outp) override;
 	bool exist(const string& backfile, const string& filename) override;
 	int for_each_ls(uuu_ls_file fn, const string &backfile, const string &filename, void *p) override;
 	int Decompress(const string& backfile, shared_ptr<FileBuffer>outp) override;
@@ -479,7 +479,7 @@ class Bz2stream : public CommonStream
 
 public:
 	Bz2stream() { memset(&m_strm, 0, sizeof(m_strm));  BZ2_bzDecompressInit(&m_strm, 0, 0); }
-	~Bz2stream()
+	virtual ~Bz2stream()
 	{
 		BZ2_bzDecompressEnd(&m_strm);
 	}
@@ -499,7 +499,7 @@ public:
 	{
 		return m_in_size - m_strm.avail_in;
 	};
-	virtual size_t get_output_pos()
+	virtual size_t get_output_pos() override
 	{
 		return m_out_size - m_strm.avail_out;
 	};
@@ -516,7 +516,7 @@ static class FSBz2 : public FSCompressStream
 public:
 	FSBz2() { m_ext = ".BZ2"; };
 	virtual bool seekable(const string& backfile) override;
-	virtual std::shared_ptr<CommonStream> create_stream() { return std::make_shared<Bz2stream>(); }
+	virtual std::shared_ptr<CommonStream> create_stream() override { return std::make_shared<Bz2stream>(); }
 	virtual std::shared_ptr<FragmentBlock> ScanCompressblock(const string& backfile, size_t& input_offset, size_t& output_offset) override;
 
 }g_fsbz2;
@@ -533,7 +533,7 @@ public:
 		memset(&m_strm, 0, sizeof(m_strm));
 		inflateInit2(&m_strm, 15 + 16);
 	}
-	~Gzstream()
+	virtual ~Gzstream()
 	{
 		deflateEnd(&m_strm);
 	}
@@ -549,20 +549,20 @@ public:
 		m_strm.avail_out = m_out_size = sz;
 		return 0;
 	};
-	virtual size_t get_input_pos()
+	virtual size_t get_input_pos() override
 	{
 		return m_in_size - m_strm.avail_in;
 	};
-	virtual size_t get_output_pos()
+	virtual size_t get_output_pos() override
 	{
 		return m_out_size - m_strm.avail_out;
 	};
-	virtual int decompress()
+	virtual int decompress() override
 	{
 		return inflate(&m_strm, Z_SYNC_FLUSH);
 	};
 
-	virtual size_t get_default_input_size() { return 0x10000; }
+	virtual size_t get_default_input_size() override { return 0x10000; }
 };
 
 static class FSGz : public FSCompressStream
@@ -612,7 +612,7 @@ public:
 		return ZSTD_DStreamInSize();
 	}
 
-	size_t decompress_size(const string& backfile)
+	size_t decompress_size(const string& backfile) override
 	{
 		shared_ptr<FileBuffer> inp = get_file_buffer(backfile, true);
 		if (inp == nullptr)
@@ -631,7 +631,7 @@ public:
 	{
 		m_dctx = ZSTD_createDCtx();
 	};
-	~ZstdStream()
+	virtual ~ZstdStream()
 	{
 		ZSTD_freeDCtx(m_dctx);
 	}
@@ -661,17 +661,17 @@ public:
 		m_pFs.push_back(&g_fshttp);
 	}
 
-	int get_file_timesample(const string &filename, uint64_t *ptimesame)
+	int get_file_timesample(const string &filename, uint64_t *ptimesample)
 	{
-		if (ptimesame == nullptr)
+		if (ptimesample == nullptr)
 		{
-			set_last_err_string("ptimesame is null\n");
+			set_last_err_string("ptimesample is null\n");
 			return -1;
 		}
 
 		for (size_t i = 0; i < m_pFs.size(); i++)
 		{
-			if (!m_pFs[i]->get_file_timesample(filename, ptimesame))
+			if (!m_pFs[i]->get_file_timesample(filename, ptimesample))
 				return 0;
 		}
 
@@ -784,7 +784,7 @@ int zip_async_load(string zipfile, string fn, shared_ptr<FileBuffer> buff)
 	if(zip.get_file_buff(fn, buff))
 		return -1;
 
-	buff->m_avaible_size = buff->m_DataSize;
+	buff->m_available_size = buff->m_DataSize;
 	atomic_fetch_or(&buff->m_dataflags, FILEBUFFER_FLAG_LOADED);
 
 	buff->m_request_cv.notify_all();
@@ -852,7 +852,7 @@ int FSTar::load(const string &backfile, const string &filename, shared_ptr<FileB
 
 	if(tar.get_file_buff(filename, p))
 		return -1;
-	p->m_avaible_size = p->m_DataSize;
+	p->m_available_size = p->m_DataSize;
 	atomic_fetch_or(&p->m_dataflags, FILEBUFFER_FLAG_LOADED);
 	p->m_request_cv.notify_all();
 	return 0;
@@ -934,6 +934,7 @@ int FSCompressStream::for_each_ls(uuu_ls_file fn, const string &backfile, const 
 class Bz2FragmentBlock: public FragmentBlock
 {
 public:
+	virtual ~Bz2FragmentBlock() {}
 	int DataConvert() override
 	{
 		std::lock_guard<mutex> lock(m_mutex);
@@ -1111,7 +1112,7 @@ int FSCompressStream::Decompress(const string& backfile, shared_ptr<FileBuffer>o
 
 			if (ret < 0) {
 				blk->m_ret = ret;
-				set_last_err_string("decompress errror");
+				set_last_err_string("decompress error");
 				outp->m_request_cv.notify_all();
 				return -1;
 			}
@@ -1124,7 +1125,7 @@ int FSCompressStream::Decompress(const string& backfile, shared_ptr<FileBuffer>o
 			ut.type = uuu_notify::NOTIFY_DECOMPRESS_POS;
 			ut.index = outOffset;
 			call_notify(ut);
-			outp->m_avaible_size = outOffset;
+			outp->m_available_size = outOffset;
 			outp->m_request_cv.notify_all();
 
 
@@ -1228,8 +1229,8 @@ shared_ptr<FileBuffer> get_file_buffer(string filename, bool async)
 		{
 			std::lock_guard<mutex> lock(p->m_async_mutex);
 
-			if(p->m_aync_thread.joinable())
-				p->m_aync_thread.join();
+			if(p->m_async_thread.joinable())
+				p->m_async_thread.join();
 
 			if(!p->IsLoaded())
 			{
@@ -1247,7 +1248,7 @@ FileBuffer::FileBuffer()
 	m_DataSize = 0;
 	m_MemSize = 0;
 	m_dataflags = 0;
-	m_avaible_size = 0;
+	m_available_size = 0;
 }
 
 FileBuffer::FileBuffer(void *p, size_t sz)
@@ -1269,8 +1270,8 @@ FileBuffer::~FileBuffer()
 {
 	m_reset_stream = true;
 
-	if(m_aync_thread.joinable())
-		m_aync_thread.join();
+	if(m_async_thread.joinable())
+		m_async_thread.join();
 
 	if (m_pDatabuffer)
 	{
@@ -1381,7 +1382,7 @@ int FileBuffer::ref_other_buffer(shared_ptr<FileBuffer> p, size_t offset, size_t
 {
 	m_pDatabuffer = p->data() + offset;
 	m_DataSize = m_MemSize = size;
-	m_avaible_size = m_DataSize;
+	m_available_size = m_DataSize;
 	m_allocate_way = ALLOCATION_WAYS::REF;
 	m_ref = p;
 
@@ -1398,7 +1399,11 @@ int FileBuffer::reload(string filename, bool async)
 		if (g_fs_data.need_small_mem(filename))
 			m_allocate_way = ALLOCATION_WAYS::SEGMENT;
 
-		m_aync_thread = thread(&FS_DATA::load, &g_fs_data, filename, shared_from_this());
+		if(m_async_thread.joinable())
+                        m_async_thread.join();
+
+		m_dataflags = 0;
+		m_async_thread = thread(&FS_DATA::load, &g_fs_data, filename, shared_from_this());
 	}
 	else
 	{
@@ -1433,12 +1438,10 @@ void FileBuffer::truncate_old_data_in_pool()
 
 	std::unique_lock<std::mutex> lock(this->m_seg_map_mutex);
 
-	if (m_last_request_offset < m_totall_buffer_size/2)
+	if (m_last_request_offset < m_total_buffer_size/2)
 		return;
 
-	size_t off = m_last_request_offset - m_totall_buffer_size/2;
-
-	size_t free_sz = 0;
+	size_t off = m_last_request_offset - m_total_buffer_size/2;
 
 	for (auto it= m_seg_map.lower_bound(off); it != m_seg_map.end(); it++)
 	{
@@ -1452,7 +1455,6 @@ void FileBuffer::truncate_old_data_in_pool()
 			blk->m_dataflags = 0;
 			blk->m_actual_size = 0;
 			vector<uint8_t> v;
-			free_sz += blk->m_data.size();
 			blk->m_data.swap(v);
 		}
 	}
@@ -1465,7 +1467,7 @@ int64_t FileBuffer::request_data_from_segment(void *data, size_t offset, size_t 
 	do
 	{
 		m_last_request_offset = offset;
-		std::unique_lock<std::mutex> lck(m_requext_cv_mutex);
+		std::unique_lock<std::mutex> lck(m_request_cv_mutex);
 
 		shared_ptr<FragmentBlock> blk;
 
@@ -1523,8 +1525,8 @@ int64_t FileBuffer::request_data_from_segment(void *data, size_t offset, size_t 
 		if (m_reset_stream)
 		{
 			m_dataflags = 0;
-			m_avaible_size = 0;
-			this->m_aync_thread.join();
+			m_available_size = 0;
+			this->m_async_thread.join();
 			m_reset_stream = false;
 
 			this->reload(m_filename, true);
@@ -1579,7 +1581,7 @@ int64_t FileBuffer::request_data(void *data, size_t offset, size_t sz)
 	{
 		if (offset >= this->size())
 		{
-			set_last_err_string("request offset execeed memory size");
+			set_last_err_string("request offset exceed memory size");
 			return -1;
 		}
 
@@ -1592,8 +1594,8 @@ int64_t FileBuffer::request_data(void *data, size_t offset, size_t sz)
 		if (this->m_allocate_way == FileBuffer::ALLOCATION_WAYS::SEGMENT)
 			return request_data_from_segment(data, offset, sz);
 
-		std::unique_lock<std::mutex> lck(m_requext_cv_mutex);
-		while ((offset + sz > m_avaible_size) && !IsLoaded())
+		std::unique_lock<std::mutex> lck(m_request_cv_mutex);
+		while ((offset + sz > m_available_size) && !IsLoaded())
 		{
 			if (IsError())
 			{
@@ -1605,7 +1607,7 @@ int64_t FileBuffer::request_data(void *data, size_t offset, size_t sz)
 
 		if (IsLoaded())
 		{
-			if (offset > m_avaible_size)
+			if (offset > m_available_size)
 			{
 				set_last_err_string("request offset execeed memory size");
 				return -1;
@@ -1615,8 +1617,8 @@ int64_t FileBuffer::request_data(void *data, size_t offset, size_t sz)
 	}
 
 	size_t size = sz;
-	if (offset + size >= m_avaible_size)
-		size = m_avaible_size - offset;
+	if (offset + size >= m_available_size)
+		size = m_available_size - offset;
 
 	if (needlock) m_data_mutex.lock();
 
@@ -1661,7 +1663,7 @@ std::shared_ptr<FragmentBlock> FileBuffer::request_new_blk()
 				offset = p->m_output_offset;
 			}
 
-			while (offset > m_last_request_offset + m_totall_buffer_size)
+			while (offset > m_last_request_offset + m_total_buffer_size)
 			{
 				if (m_reset_stream)
 					return NULL;
@@ -1719,7 +1721,7 @@ std::shared_ptr<DataBuffer> FileBuffer::request_data(size_t offset, size_t sz)
 			return p;
 	}
 
-	if (sz == UINT64_MAX)
+	if (sz == SIZE_MAX)
 		sz = size() - offset;
 
 	p->resize(sz);
@@ -1897,7 +1899,7 @@ int FSCompressStream::load(const string& backfile, const string& filename, share
 		tar.Open(decompressed_name);
 		if (tar.get_file_buff(filename, outp))
 			return -1;
-		outp->m_avaible_size = outp->m_DataSize;
+		outp->m_available_size = outp->m_DataSize;
 	}
 
 	if (seekable(backfile))
@@ -2047,8 +2049,8 @@ void clean_up_filemap()
 	{
 		it.second->m_reset_stream = true;
 		it.second->m_pool_load_cv.notify_all();
-		if (it.second->m_aync_thread.joinable())
-			it.second->m_aync_thread.join();
+		if (it.second->m_async_thread.joinable())
+			it.second->m_async_thread.join();
 	}
 	g_filebuffer_map.clear();
 }

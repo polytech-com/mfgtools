@@ -98,13 +98,13 @@ CmdBase::~CmdBase()
 
 int CmdBase::parser(char *p)
 {
-	if (p != nullptr)
-		m_cmd = p;
-
 	size_t pos = 0;
-	string param = get_next_param(m_cmd, pos);
+	string param;
 
-	if (param.find(':') != string::npos)
+	if (parser_protocol(p, pos))
+		return -1;
+
+	if (pos < m_cmd.size())
 		param = get_next_param(m_cmd, pos);
 
 	size_t index = 0;
@@ -202,7 +202,7 @@ int CmdBase::parser(char *p)
 	return 0;
 }
 
-int CmdBase::parser_protocal(char *p, size_t &pos)
+int CmdBase::parser_protocol(char *p, size_t &pos)
 {
 	if (p)
 		m_cmd = p;
@@ -305,7 +305,7 @@ int CmdMap::run_all(const std::string &protocol, CmdCtx *p, bool dry_run)
 	return at(protocol)->run_all(p, dry_run);
 }
 
-string get_next_param(const string &cmd, size_t &pos, char sperate)
+string get_next_param(const string &cmd, size_t &pos, char separate)
 {
 	string str;
 	if (pos == string::npos)
@@ -314,18 +314,18 @@ string get_next_param(const string &cmd, size_t &pos, char sperate)
 		return str;
 
 	//trim left space
-	while (cmd[pos] == sperate && pos < cmd.size())
+	while (cmd[pos] == separate && pos < cmd.size())
 		pos++;
 
-	bool quate = false;
+	bool quote = false;
 	size_t end = string::npos;
 
 	for (size_t s = pos; s < cmd.size(); s++)
 	{
 		if (cmd[s] == '"')
-			quate = !quate;
+			quote = !quote;
 
-		if (!quate && cmd[s] == sperate)
+		if (!quote && cmd[s] == separate)
 		{
 			end = s;
 			break;
@@ -397,19 +397,19 @@ T str_to_uint(const std::string &str, bool * conversion_succeeded)
 	return MAX_VAL;
 }
 
-uint16_t str_to_uint16(const string &str, bool * conversion_suceeded)
+uint16_t str_to_uint16(const string &str, bool * conversion_succeeded)
 {
-	return str_to_uint<uint16_t, UINT16_MAX>(str, conversion_suceeded);
+	return str_to_uint<uint16_t, UINT16_MAX>(str, conversion_succeeded);
 }
 
-uint32_t str_to_uint32(const string &str, bool * conversion_suceeded)
+uint32_t str_to_uint32(const string &str, bool * conversion_succeeded)
 {
-	return str_to_uint<uint32_t, UINT32_MAX>(str, conversion_suceeded);
+	return str_to_uint<uint32_t, UINT32_MAX>(str, conversion_succeeded);
 }
 
-uint64_t str_to_uint64(const string &str, bool * conversion_suceeded)
+uint64_t str_to_uint64(const string &str, bool * conversion_succeeded)
 {
-	return str_to_uint<uint64_t, UINT64_MAX>(str, conversion_suceeded);
+	return str_to_uint<uint64_t, UINT64_MAX>(str, conversion_succeeded);
 }
 
 template <class T> shared_ptr<CmdBase> new_cmd_obj(char *p)
@@ -466,6 +466,8 @@ CmdObjCreateMap::CmdObjCreateMap()
 	(*this)["FASTBOOT:FLASHING"] = new_cmd_obj<FBFlashingCmd>;
 	(*this)["FB:SET_ACTIVE"] = new_cmd_obj<FBSetActiveCmd>;
 	(*this)["FASTBOOT:SET_ACTIVE"] = new_cmd_obj<FBSetActiveCmd>;
+	(*this)["FB:BOOT"] = new_cmd_obj<FBBootCmd>;
+	(*this)["FASTBOOT:BOOT"] = new_cmd_obj<FBBootCmd>;
 	(*this)["FB:CONTINUE"] = new_cmd_obj<FBContinueCmd>;
 	(*this)["FASTBOOT:CONTINUE"] = new_cmd_obj<FBContinueCmd>;
 
@@ -638,7 +640,7 @@ int CmdError::parser(char *p)
 	size_t pos = 0;
 	string s;
 
-	if (parser_protocal(p, pos))
+	if (parser_protocol(p, pos))
 		return -1;
 
 	s = get_next_param(m_cmd, pos);
@@ -662,10 +664,10 @@ int CmdShell::parser(char * p)
 	size_t pos = 0;
 	string s;
 
-	if (parser_protocal(p, pos))
+	if (parser_protocol(p, pos))
 		return -1;
 
-	m_protocal = m_cmd.substr(0, pos);
+	m_protocol = m_cmd.substr(0, pos);
 
 	s = get_next_param(m_cmd, pos);
 
@@ -700,7 +702,7 @@ int CmdShell::run(CmdCtx*pCtx)
 		if (m_dyn)
 		{
 			string cmd;
-			cmd = m_protocal;
+			cmd = m_protocol;
 			str.resize(strlen(str.c_str()));
 			cmd += ' ';
 			cmd += str;
@@ -745,7 +747,7 @@ int CmdEnv::parser(char *p)
 
 	size_t pos = 0;
 
-	if (parser_protocal(p, pos))
+	if (parser_protocol(p, pos))
 		return -1;
 	if (pos == string::npos || pos >= m_cmd.size())
 		return -1;
@@ -799,10 +801,10 @@ int CmdIf::parser(char *p)
 
 	size_t pos = 0;
 
-	if (parser_protocal(p, pos))
+	if (parser_protocol(p, pos))
 		return -1;
 
-	m_protocal = m_cmd.substr(0, pos);
+	m_protocol = m_cmd.substr(0, pos);
 
 	if (pos == string::npos || pos >= m_cmd.size())
 		return -1;
@@ -826,7 +828,7 @@ int CmdIf::parser(char *p)
 		return -1;
 	}
 
-	m_condtion = m_cmd.substr(lc, end - lc);
+	m_condition = m_cmd.substr(lc, end - lc);
 	m_true_cmd = m_cmd.substr(end + 4);
 	return 0;
 }
@@ -855,11 +857,11 @@ int CmdIf::run(CmdCtx *p)
 	int i = 0;
 	for (i = 0; !cmp[i].empty(); i++)
 	{
-		size_t pos = m_condtion.find(cmp[i], 0);
+		size_t pos = m_condition.find(cmp[i], 0);
 		if (pos != string::npos)
 		{
-			l = m_condtion.substr(0, pos);
-			r = m_condtion.substr(pos + cmp[i].size() + 1);
+			l = m_condition.substr(0, pos);
+			r = m_condition.substr(pos + cmp[i].size() + 1);
 			break;
 		}
 	}
@@ -890,7 +892,7 @@ int CmdIf::run(CmdCtx *p)
 	}
 
 	//Pass condition check;
-	string cmd = m_protocal;
+	string cmd = m_protocol;
 	cmd += ' ';
 	cmd += this->m_true_cmd;
 	return run_cmd(p, cmd.c_str(), 0);
@@ -901,7 +903,7 @@ int CmdEnv::run(CmdCtx *p)
 	return run_cmd(p, m_unfold_cmd.c_str(), 0);
 }
 
-int run_cmds(const char *procotal, CmdCtx *p)
+int run_cmds(const char *protocol, CmdCtx *p)
 {
 	CmdMap cmdmap, *pCmdMap;
 
@@ -923,12 +925,12 @@ int run_cmds(const char *procotal, CmdCtx *p)
 		pCmdMap = &g_cmd_map;
 	}
 
-	if (pCmdMap->find(procotal) == pCmdMap->end())
+	if (pCmdMap->find(protocol) == pCmdMap->end())
 	{
 		return 0;
 	}
 
-	return (*pCmdMap)[procotal]->run_all(p);
+	return (*pCmdMap)[protocol]->run_all(p);
 }
 
 static int insert_one_cmd(const char * cmd, CmdMap *pCmdMap)
